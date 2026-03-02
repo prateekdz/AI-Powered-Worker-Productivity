@@ -1,0 +1,22 @@
+# Python
+backend/   # legacy Python backend removed
+__pycache__/
+*.py[cod]
+*.env
+.venv/
+
+# Node
+node_modules/
+dist/
+/build/
+/.env
+
+# VSCode
+.vscode/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
