@@ -1,0 +1,28 @@
+version: '3.8'
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: .
+    depends_on:
+      - mongo
+    environment:
+      - MONGO_URL=mongodb://mongo:27017
+      - DB_NAME=AI_Dashboard
+      - PORT=3001
+      - CORS_ORIGINS=*
+    volumes:
+      - .:/usr/src/app
+    working_dir: /usr/src/app
+    command: npm run dev
+    ports:
+      - "3001:3001"
+
+volumes:
+  mongo_data:

@@ -51,6 +51,149 @@ A production-ready full-stack web application for monitoring worker productivity
 - Live activity feed
 - Responsive industrial design
 
+## Local Development
+
+### Environment Variables
+
+The backend uses `dotenv` and looks for the following variables (you can copy and rename `.env.example`):
+
+```env
+# backend/.env
+MONGO_URL=mongodb://localhost:27017        # default database server
+DB_NAME=AI_Dashboard                       # database name
+PORT=3001                                  # server port
+CORS_ORIGINS=*
+```
+
+You can also create a system-wide `.env` file at the project root; the backend will read the first one it finds.
+
+### Frontend Environment Variables
+
+The frontend is a React + Vite application that needs to know where the backend API is located. Copy `frontend/.env.example` to `frontend/.env.local`:
+
+```env
+# frontend/.env.local
+VITE_BACKEND_URL=http://localhost:3001    # backend API URL
+```
+
+> 📝 **Important:** In Vite, environment variables must be prefixed with `VITE_` to be accessible in the browser via `import.meta.env`.
+
+When deployed, update this to point to your production backend (e.g. a Render service URL).
+
+### Running MongoDB
+
+You need a running MongoDB instance for the API to connect. A couple of easy options:
+
+1. **Docker Compose**
+   ```bash
+   cd backend
+   docker-compose up -d          # starts mongodb + backend in development mode
+   ```
+   A `backend/docker-compose.yml` file is included for convenience.
+
+2. **Local install or Atlas**
+   - Install MongoDB locally and run `mongod`.
+   - Or use a hosted cluster (e.g. MongoDB Atlas) and set `MONGO_URL` accordingly.
+
+> ⚠️ The error below appears when no MongoDB server is reachable:
+>
+> ```text
+> Mongo connection error: MongooseServerSelectionError: connect ECONNREFUSED ::1:27017
+> ```
+>
+> Make sure the database is running and `MONGO_URL` points to the correct host.
+
+### Docker Compose (optional)
+
+A sample compose file lives in `backend/docker-compose.yml`:
+
+```yaml
+version: '3.8'
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: .
+    depends_on:
+      - mongo
+    environment:
+      - MONGO_URL=mongodb://mongo:27017
+      - DB_NAME=AI_Dashboard
+      - PORT=3001
+      - CORS_ORIGINS=*
+    volumes:
+      - .:/usr/src/app
+    working_dir: /usr/src/app
+    command: npm run dev
+    ports:
+      - "3001:3001"
+
+volumes:
+  mongo_data:
+```
+
+### Quick Start (Local Development)
+
+To run the entire stack locally:
+
+**Terminal 1 — Start MongoDB + Backend:**
+```bash
+cd backend
+docker-compose up
+```
+This starts MongoDB on port 27017 and the Express server on port 3001.
+
+**Terminal 2 — Start Frontend:**
+```bash
+cd frontend
+npm install         # if first run
+npm run dev
+```
+This starts the Vite dev server on port 3000, with live reload enabled.
+
+Then open http://localhost:3000 in your browser.
+
+If you're not using Docker Compose, ensure:
+- MongoDB is running (locally or on Atlas with IP whitelisted)
+- `backend/.env` has the correct `MONGO_URL` and `PORT=3001`
+- `frontend/.env.local` has `VITE_BACKEND_URL=http://localhost:3001`
+
+### Deploying to Render
+
+Render is a popular platform for hosting Node.js web services, but it does **not** provide a bundled MongoDB server. To launch the backend you must:
+
+1. **Provision a database** (MongoDB Atlas, mLab, or another hosted cluster).
+   - Copy the connection string into `MONGO_URL` (set as an environment variable on Render).
+2. **Set environment variables** in the Render dashboard (the same ones listed in "Environment Variables" above).
+   - Render automatically injects a `PORT` variable; the application logs a message showing which port it bound to.  The server now binds to the port immediately during startup so that logs like `No open ports detected` do not appear even if the database connection is still pending.
+   - The `ECONNREFUSED ::1:27017` error occurs when the service attempts to connect to `localhost`; on Render there is no server listening, so make sure `MONGO_URL` points to a reachable host.
+3. **View logs** via the Render dashboard (`Logs` tab) or the CLI `render logs service-name --since 1h`.
+   - `console.log` and `console.error` output from `app.js` appear there.
+   - The repeated message `No open ports detected` is Render's way of telling you the process exited before binding a port. It usually means the app crashed (e.g. because Mongo was unavailable).
+
+To improve reliability you can add retry logic or a startup script that waits for the database. The current code already prints environment values on failure to aid debugging.
+
+#### Frontend on Render
+
+The frontend is a static site built with Vite and React. To deploy it:
+
+1. Create a **new Render service** for the frontend (separate from the backend service).
+2. Use `npm run build` as the build command and `dist/` as the publish directory.
+3. Set the environment variable `VITE_BACKEND_URL` to your backend service URL:
+   - If backend is at `https://ai-worker-backend.onrender.com`, set `VITE_BACKEND_URL=https://ai-worker-backend.onrender.com`
+   - This tells the frontend where to send API requests.
+4. Deploy and Render will serve the built static files; requests to `/api/*` will be proxied by the frontend's Vite config to the backend.
+
+> 💡 Tip: If both frontend and backend are on Render, set `VITE_BACKEND_URL` to your backend service's full URL. The frontend will make cross-origin requests to it.
+
+
+
 ## Database Schema
 
 ### Collections
