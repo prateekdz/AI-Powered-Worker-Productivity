@@ -1,4 +1,4 @@
-AI-Powered Worker Productivity Dashboard
+## AI-Powered Worker Productivity Dashboard
 
 A production-ready full-stack web application for monitoring worker productivity in manufacturing facilities using AI-powered CCTV camera events.
 
